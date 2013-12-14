@@ -8,7 +8,7 @@ package
 		
 		public function Main():void 
 		{
-			super(640, 480, PlayState);
+			super(320, 240, PlayState, 2);
 		}
 	}
 	
