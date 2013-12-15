@@ -1,75 +1,313 @@
 package
 {
+	import adobe.utils.CustomActions;
 	import org.flixel.*;
 	
 	public class PlayState extends FlxState
 	{
-		private var player:FlxSprite;
-		private var playerSpeed:Number = 50;
+		private var player:Player;
 		private var grassTiles:FlxTileblock;
 		private var wallTiles:FlxTilemap;
+		private var guardGroup:FlxGroup;
+		private var guardHealthBarGroup:FlxGroup;
+		private var guard:Guard;
+		private var timeSinceMissile:Number = 10000000;
+		private var corpseGroup:FlxGroup;
+		private var timeSinceGuardSpawn:Number = 0;
+		private var guardSpawnsEveryXSeconds:Number = 5;
+		private var timeSinceGameStart = 0;
 		
-		private var guard:FlxSprite;
+		private var radiusText:FlxText;
+		private var scoreText:FlxText;
 		
-		[Embed(source = "img/Grass.png")] var GrassTiles:Class;
-		[Embed(source = "img/Necromancer.png")] var playerGraphic:Class;
-		[Embed(source = "img/Walls.png")] var WallGraphic:Class;
+		private var scoreCount:int = 0;
+		
+		private var explodeRadius:Number = 100;
+		private var powerupIncrease:Number = 10;
+		private var powerupFrequency:Number = 15;
+		
+		private var guardCount:int = 5;
+		
+		private var powerups:FlxGroup;
+		
+		[Embed(source = "img/Grass.png")] private var GrassTiles:Class;
+		[Embed(source = "img/Walls.png")] private var WallGraphic:Class;
+		
+		private function updateRadiusText():String
+		{
+			var str1:String = "Explosion Radius: " + explodeRadius + " pixels";
+			return str1;
+		}
+		
 		
 		override public function create():void
 		{
+			radiusText = new FlxText(0, 0, 200, updateRadiusText());
+			scoreText = new FlxText(FlxG.width - 50, 0, 50);
 			grassTiles = new FlxTileblock(0, 0, FlxG.width, FlxG.height);
 			grassTiles.loadTiles(GrassTiles);
 			add(grassTiles);
 			
 			wallTiles = new FlxTilemap();
 			var mapData:Array = new Array(
-				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-				1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-				1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-				1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-				1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 			);
-			
+
 			
 			wallTiles.loadMap(FlxTilemap.arrayToCSV(mapData, 20), WallGraphic);
 			add(wallTiles);
-			
-			//guard = new FlxSprite
-			
-			player = new FlxSprite(FlxG.width / 2, FlxG.height / 2);
-			player.loadGraphic(playerGraphic);
+			player = new Player(FlxG.width / 2, FlxG.height / 2);
 			add(player);
+			add(player.healthBar);
+			
+			guardGroup = new FlxGroup();
+			guardHealthBarGroup = new FlxGroup();
+			corpseGroup = new FlxGroup();
+			add(radiusText);
+			add(scoreText);
+			powerups = new FlxGroup();
+		}
+		
+		private function createGuard():void 
+		{
+			var choices:Array = new Array(0, 0, FlxG.width, FlxG.height);
+			var newGuard:Guard;
+			var _x:Number; 
+			var _y:Number;
+			
+			if (Math.random() > 0.5) {
+				_x = 0;
+			}
+			else {
+				_x = FlxG.width;
+			}
+			
+			if (Math.random() > 0.5) {
+				_y = 0;
+			}
+			else {
+				_y = FlxG.height;
+			}
+			
+			newGuard = new Guard(_x, _y);
+			
+			newGuard.targetSprite = player;
+			guardGroup.add(newGuard);
+			guardHealthBarGroup.add(newGuard.healthBar);
+			add(guardGroup);
+			add(guardHealthBarGroup);
+
+		}
+		
+		private function createCorpse(X:Number, Y:Number):void 
+		{
+			var corpse:Corpse = new Corpse(X, Y);
+			corpseGroup.add(corpse);
+			add(corpseGroup);
 		}
 		
 		override public function update():void
 		{
-			player.velocity = new FlxPoint(0, 0);
-			if (FlxG.keys.LEFT) {
-				player.velocity.x = -playerSpeed;
-			}
-			if (FlxG.keys.RIGHT) {
-				player.velocity.x = playerSpeed;
-			}
-			if (FlxG.keys.UP) {
-				player.velocity.y = -playerSpeed;
-			}
-			if (FlxG.keys.DOWN) {
-				player.velocity.y = playerSpeed;
+			adjustSpawnRate();
+			timeSinceGuardSpawn += FlxG.elapsed;
+			timeSinceGameStart += FlxG.elapsed;
+			
+			if (timeSinceGuardSpawn >= guardSpawnsEveryXSeconds) {
+				createGuard();
+				timeSinceGuardSpawn = 0;
 			}
 			
+			radiusText.text = updateRadiusText();
+			scoreText.text = scoreCount + " killed";
+			
+			timeSinceMissile += FlxG.elapsed;
+			FlxG.mouse.show();
+			
+			if (FlxG.keys.justPressed("SPACE")) {
+				blowUpNearestCorpse();
+			}
+			
+			else if (FlxG.keys.SPACE) { 				
+				if (timeSinceMissile > 0.25) {
+					magicMissile();
+					timeSinceMissile = 0;
+				}
+			}
+			
+			if (FlxG.keys.justPressed("N")) {
+				createGuard();
+			}
+			var i:int;
+			//FlxG.collide(player, guardGroup);
+			for (i = 0; i < guardGroup.length; i++) {
+				FlxG.overlap(player, guardGroup.members[i], hurtPlayer);
+			}
 			FlxG.collide(player, wallTiles);
+			FlxG.collide(guardGroup, wallTiles);
+			FlxG.collide(guardGroup, guardGroup);
+			
+			for (i = 0; i < powerups.length; i++) {
+				FlxG.overlap(player, powerups.members[i], pickUpPowerup);
+			}
+			
+			add(corpseGroup);
+			add(powerups);
+			add(guardGroup);
+			add(guardHealthBarGroup);
+			add(player);
+			add(player.healthBar);
+
 			
 			super.update();
 		}
+		
+		private function hurtPlayer(player:Player, guard:Guard):void
+		{
+			FlxObject.separate(player, guard);
+			
+			if (guard.swing()) {
+				//trace("hit!");
+				player.hurt(10);
+				guard.timeSinceAttack = 0;
+			}
+		}
+		
+		private function blowUpNearestCorpse():void 
+		{
+			var closestCorpse:Corpse = null;
+			var closestDist:Number = 100000000000000;
+			var i:int;
+			for (i = 0; i < corpseGroup.length; i++) {
+				if (corpseGroup.members[i].blownUp) {
+					continue;
+				}
+				var diff_x:Number = player.x - corpseGroup.members[i].x;
+				var diff_y:Number = player.y - corpseGroup.members[i].y;
+				var dist:Number = Math.sqrt(Math.pow(diff_x, 2) + Math.pow(diff_y, 2));
+				if (dist < closestDist) {
+					closestDist = dist;
+					closestCorpse = corpseGroup.members[i];
+				}
+			}
+		
+			if (closestCorpse != null) {
+				closestCorpse.blowUp();
+				add(new Explosion(closestCorpse.x, closestCorpse.y, explodeRadius));
+				var damagedGuards:FlxGroup = new FlxGroup();
+				for (i = 0; i < guardGroup.length; i++) {
+					if (guardGroup.members[i].health <= 0) {
+						continue;
+					}
+					diff_x = player.x - guardGroup.members[i].x;
+					diff_y = player.y - guardGroup.members[i].y;
+					dist = Math.sqrt(Math.pow(diff_x, 2) + Math.pow(diff_y, 2));
+					
+					if (dist <= explodeRadius) {
+						damagedGuards.add(guardGroup.members[i]);
+					}
+				}
+				
+				for (i = 0; i < damagedGuards.length; i++) {
+					damagedGuards.members[i].hurt(50);
+					if (damagedGuards.members[i].health <= 0) {
+						createCorpse(damagedGuards.members[i].x, damagedGuards.members[i].y);
+						scoreCount += 1;
+						chanceToDropPowerup(damagedGuards.members[i].x, damagedGuards.members[i].y);
+					}
+				}
+			}
+		}
+		
+		
+		private function magicMissile():void
+		{
+			// find nearest guard
+			
+			var closestGuard:Guard = null;
+			var closestDist:Number = 10000000000000;
+			for (var i:int = 0; i < guardGroup.length; i++) {
+				if (guardGroup.members[i].health <= 0) {
+					continue;
+				}
+				var diff_x:Number = player.x - guardGroup.members[i].x;
+				var diff_y:Number = player.y - guardGroup.members[i].y;
+				var dist:Number = Math.sqrt(Math.pow(diff_x, 2) + Math.pow(diff_y, 2));
+				if (dist < closestDist) {
+					closestDist = dist;
+					closestGuard = guardGroup.members[i];
+				}
+			}
+			
+			if (closestGuard != null) {
+				//hurt nearest guard
+				closestGuard.hurt(10);
+				
+				// if nearest guard dies from that, remove him from the guardGroup
+				
+				add(new MagicMissile(player.x, player.y, new FlxPoint(closestGuard.x, closestGuard.y)));
+				
+				
+				
+				if (closestGuard.health <= 0) {
+					//trace("guard killed");
+					createCorpse(closestGuard.x, closestGuard.y);
+					scoreCount += 1;
+					chanceToDropPowerup(closestGuard.x, closestGuard.y);
+				}
+			
+			}
+			
+			
+		}
+		
+		
+		private function chanceToDropPowerup(x:Number, y:Number):void {
+			if ((scoreCount % powerupFrequency) == 0) {
+				powerups.add(new Powerup(x, y));
+			}
+		}
+		
+		private function pickUpPowerup(player:Player, powerup:Powerup):void {
+			if (!powerup.pickedUp) {
+				powerup.pickedUp = true;
+				explodeRadius += powerupIncrease;
+			}
+		}
+		
+		private function adjustSpawnRate() {
+			var rateMap:Array = new Array(
+				5, 5,
+				10, 2.5,
+				15, 1, 
+				20, 0.5, 
+				25, 0.25,
+				60, 0.1
+			);
+			
+			for (var i:int = 0; i < rateMap.length; i += 2) {
+				if (timeSinceGameStart > rateMap[i]) {
+					guardSpawnsEveryXSeconds = rateMap[i + 1];
+				}
+				else {
+					break;
+				}
+			}
+			trace(guardSpawnsEveryXSeconds);
+		}
+		
 	}
 }
