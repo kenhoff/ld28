@@ -1,6 +1,5 @@
 package
 {
-	import adobe.utils.CustomActions;
 	import org.flixel.*;
 	
 	public class PlayState extends FlxState
@@ -15,16 +14,17 @@ package
 		private var corpseGroup:FlxGroup;
 		private var timeSinceGuardSpawn:Number = 0;
 		private var guardSpawnsEveryXSeconds:Number = 5;
-		private var timeSinceGameStart = 0;
+		private var timeSinceGameStart:Number = 0;
 		
 		private var radiusText:FlxText;
 		private var scoreText:FlxText;
 		
 		private var scoreCount:int = 0;
+		private var targetScore:int = 60;
 		
-		private var explodeRadius:Number = 100;
+		private var explodeRadius:Number = 30;
 		private var powerupIncrease:Number = 10;
-		private var powerupFrequency:Number = 15;
+		private var powerupFrequency:Number = 7;
 		
 		private var guardCount:int = 5;
 		
@@ -32,6 +32,15 @@ package
 		
 		[Embed(source = "img/Grass.png")] private var GrassTiles:Class;
 		[Embed(source = "img/Walls.png")] private var WallGraphic:Class;
+		[Embed(source = "mp3/magic_missile_normal.mp3")] private var mm_mp3_1:Class;
+		[Embed(source = "mp3/magic_missile_hi.mp3")] private var mm_mp3_2:Class;
+		[Embed(source = "mp3/magic_missile_low.mp3")] private var mm_mp3_3:Class;
+		[Embed(source = "mp3/corpse_explosion.mp3")] private var ce_mp3_1:Class;
+		[Embed(source = "mp3/corpse_explosion_hi.mp3")] private var ce_mp3_2:Class;
+		[Embed(source = "mp3/corpse_explosion_low.mp3")] private var ce_mp3_3:Class;
+		
+		[Embed(source = "img/Gibs.png")] private var giblets:Class;
+		
 		
 		private function updateRadiusText():String
 		{
@@ -43,7 +52,8 @@ package
 		override public function create():void
 		{
 			radiusText = new FlxText(0, 0, 200, updateRadiusText());
-			scoreText = new FlxText(FlxG.width - 50, 0, 50);
+			scoreText = new FlxText(FlxG.width - 100, 0, 100);
+			scoreText.alignment = "right";
 			grassTiles = new FlxTileblock(0, 0, FlxG.width, FlxG.height);
 			grassTiles.loadTiles(GrassTiles);
 			add(grassTiles);
@@ -56,9 +66,9 @@ package
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-				0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0,
-				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 				0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
@@ -66,7 +76,19 @@ package
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 			);
-
+			
+			for (var i:int = 0; i < mapData.length; i++) {
+				if (Math.random() <= 0.10) {
+					mapData[i] = int(Math.random() * 8);
+				}
+				else {
+					mapData[i] = 0;
+				}
+			}
+			
+			
+			
+			
 			
 			wallTiles.loadMap(FlxTilemap.arrayToCSV(mapData, 20), WallGraphic);
 			add(wallTiles);
@@ -84,24 +106,35 @@ package
 		
 		private function createGuard():void 
 		{
-			var choices:Array = new Array(0, 0, FlxG.width, FlxG.height);
 			var newGuard:Guard;
 			var _x:Number; 
 			var _y:Number;
 			
-			if (Math.random() > 0.5) {
-				_x = 0;
-			}
-			else {
-				_x = FlxG.width;
-			}
+			var rand:Number = Math.random();
 			
-			if (Math.random() > 0.5) {
-				_y = 0;
+			if (rand <= 0.25) {
+				//up
+				_x = Math.random() * FlxG.width;
+				_y = -16;
 			}
-			else {
+			else if (rand <= 0.5) {
+				//down
+				_x = Math.random() * FlxG.width;
 				_y = FlxG.height;
 			}
+			else if (rand <= 0.75) {
+				//left
+				_x = -16;
+				_y = FlxG.height * Math.random();
+			}
+			else {
+				//right
+				_x = FlxG.width;
+				_y = FlxG.height * Math.random();
+			}
+			
+			
+			
 			
 			newGuard = new Guard(_x, _y);
 			
@@ -122,6 +155,14 @@ package
 		
 		override public function update():void
 		{
+			if (player.health <= 0) {
+				FlxG.switchState(new LossState());
+			}
+			
+			if (scoreCount >= targetScore) {
+				FlxG.switchState(new WinState());
+			}
+			
 			adjustSpawnRate();
 			timeSinceGuardSpawn += FlxG.elapsed;
 			timeSinceGameStart += FlxG.elapsed;
@@ -132,7 +173,7 @@ package
 			}
 			
 			radiusText.text = updateRadiusText();
-			scoreText.text = scoreCount + " killed";
+			scoreText.text = "Score: " + scoreCount + " / " + targetScore;
 			
 			timeSinceMissile += FlxG.elapsed;
 			FlxG.mouse.show();
@@ -186,7 +227,7 @@ package
 			}
 		}
 		
-		private function blowUpNearestCorpse():void 
+		private function blowUpNearestCorpse():Boolean 
 		{
 			var closestCorpse:Corpse = null;
 			var closestDist:Number = 100000000000000;
@@ -206,7 +247,10 @@ package
 		
 			if (closestCorpse != null) {
 				closestCorpse.blowUp();
-				add(new Explosion(closestCorpse.x, closestCorpse.y, explodeRadius));
+				corpseExplosionSound();
+				var explosion:Explosion = new Explosion(closestCorpse.x, closestCorpse.y, explodeRadius);
+				add(explosion);
+				add(explosion.gibsEmitter);
 				var damagedGuards:FlxGroup = new FlxGroup();
 				for (i = 0; i < guardGroup.length; i++) {
 					if (guardGroup.members[i].health <= 0) {
@@ -228,13 +272,16 @@ package
 						scoreCount += 1;
 						chanceToDropPowerup(damagedGuards.members[i].x, damagedGuards.members[i].y);
 					}
+				return true;
 				}
 			}
+			return false;
 		}
 		
 		
 		private function magicMissile():void
 		{
+			
 			// find nearest guard
 			
 			var closestGuard:Guard = null;
@@ -259,6 +306,7 @@ package
 				// if nearest guard dies from that, remove him from the guardGroup
 				
 				add(new MagicMissile(player.x, player.y, new FlxPoint(closestGuard.x, closestGuard.y)));
+				magicMissileSound();
 				
 				
 				
@@ -288,14 +336,26 @@ package
 			}
 		}
 		
-		private function adjustSpawnRate() {
+		private function adjustSpawnRate():void {
+			
+			//var _score:Number = scoreCount;
+			//var _maxRate:Number = 0;
+			//var _minRate:Number = 5;
+			//var _goalScore:Number = targetScore;
+			//
+			//var _currentRate:Number = (- (1 /(_goalScore / _minRate)) * _score ) + _minRate;
+			//
+			//guardSpawnsEveryXSeconds = _currentRate;
+			//guardSpawnsEveryXSeconds = -0.00005(Math.pow(scoreCount, 2.5)) + 5;
+			//trace(guardSpawnsEveryXSeconds);
+			
+			
 			var rateMap:Array = new Array(
-				5, 5,
-				10, 2.5,
-				15, 1, 
-				20, 0.5, 
-				25, 0.25,
-				60, 0.1
+				10, 3,
+				20, 2,
+				30, 1,
+				40, 0.5
+				
 			);
 			
 			for (var i:int = 0; i < rateMap.length; i += 2) {
@@ -307,6 +367,32 @@ package
 				}
 			}
 			trace(guardSpawnsEveryXSeconds);
+		}
+		
+		private function magicMissileSound():void {
+			var random:Number = Math.random();
+			if (random <= 0.33) {
+				FlxG.play(mm_mp3_1);
+			}
+			else if ((random > 0.33) && (random <= 0.66)) {
+				FlxG.play(mm_mp3_2);
+			}
+			else {
+				FlxG.play(mm_mp3_3);
+			}
+		}
+		
+		private function corpseExplosionSound():void {
+			var random:Number = Math.random();
+			if (random <= 0.33) {
+				FlxG.play(ce_mp3_1);
+			}
+			else if ((random > 0.33) && (random <= 0.66)) {
+				FlxG.play(ce_mp3_2);
+			}
+			else {
+				FlxG.play(ce_mp3_3);
+			}
 		}
 		
 	}

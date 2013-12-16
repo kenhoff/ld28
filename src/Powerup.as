@@ -5,7 +5,7 @@ package
 	public class Powerup extends FlxSprite
 	{
 		public var pickedUp:Boolean = false;
-		[Embed(source = "img/Magic Missile.png")] private var graphic:Class;
+		[Embed(source = "img/Powerup.png")] private var graphic:Class;
 		public function Powerup(X:Number, Y:Number)
 		{
 			super(X, Y);

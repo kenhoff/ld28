@@ -12,8 +12,8 @@ package
 		public function updateHealthBar(percent:Number):void
 		{
 			var barPixelSize:uint = percent * 16;
-			if (barPixelSize < 0) {
-				barPixelSize = 0;
+			if (barPixelSize <= 0) {
+				barPixelSize = 1;
 			}
 			//trace("bar pixel size: ", barPixelSize);
 			//trace(x);

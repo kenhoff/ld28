@@ -14,10 +14,17 @@ package
 			loadGraphic(playerGraphic);
 			healthBar = new HealthBar(X, Y);
 			health = maxHealth;
+			width = width * 0.9;
+			height = height * 0.9;
+			offset.x = 1;
+			offset.y = 1;
 			
 		}
 		override public function update():void
 		{
+			if (health <= 0) {
+				FlxG.switchState(new LossState());
+			}
 			health += FlxG.elapsed;
 			if (health > maxHealth) {
 				health = maxHealth;
@@ -40,7 +47,12 @@ package
 			
 			healthBar.x = x;
 			healthBar.y = y;
-			healthBar.updateHealthBar(health / maxHealth);
+			
+			var percentHealthLeft:Number = health / maxHealth;
+			if (percentHealthLeft < 0) {
+				percentHealthLeft = 0;
+			}
+			healthBar.updateHealthBar(percentHealthLeft);
 			
 		}
 		
