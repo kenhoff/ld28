@@ -2,6 +2,7 @@ CORPSE EXPLOSION
 ====
 
 [Playable here](ld28.kenhoff.net)
+
 [Voting page here](http://www.ludumdare.com/compo/ludum-dare-28/?action=preview&uid=20246)
 
 This is my entry for the 28th Ludum Dare.
